@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Pin, PinOff, Loader2, Plus, Check, AlertCircle } from 'lucide-react';
 import { vocabulary } from '../utils/wordMatching';
 import { translateWord, type TranslationResponse } from '../utils/gpt';
+import { type VocabularyItem, migrateVocabularyData } from '../types/vocabulary';
 
 interface Props {
     text: string;
@@ -18,9 +19,10 @@ export default function TranslationModal({ text, onClose, position }: Props) {
 
     useEffect(() => {
         // 检查是否已在生词本中
-        chrome.storage.local.get(['vocabularyList'], (result: { vocabularyList?: string[] }) => {
-            const list = result.vocabularyList || [];
-            if (list.includes(text.toLowerCase())) {
+        chrome.storage.local.get(['vocabularyList'], (result: { vocabularyList?: string[] | VocabularyItem[] }) => {
+            const list = migrateVocabularyData(result.vocabularyList || []);
+            const exists = list.some(item => item.word.toLowerCase() === text.toLowerCase());
+            if (exists) {
                 setIsAdded(true);
             }
         });
@@ -44,14 +46,24 @@ export default function TranslationModal({ text, onClose, position }: Props) {
 
     const handleAddToVocabulary = (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (isAdded) return;
+        if (isAdded || !data) return;
 
         vocabulary.insert(text);
 
-        chrome.storage.local.get(['vocabularyList'], (result: { vocabularyList?: string[] }) => {
-            const list = result.vocabularyList || [];
-            if (!list.includes(text.toLowerCase())) {
-                list.push(text.toLowerCase());
+        chrome.storage.local.get(['vocabularyList'], (result: { vocabularyList?: string[] | VocabularyItem[] }) => {
+            const list = migrateVocabularyData(result.vocabularyList || []);
+            const exists = list.some(item => item.word.toLowerCase() === text.toLowerCase());
+
+            if (!exists) {
+                const newItem: VocabularyItem = {
+                    word: text.toLowerCase(),
+                    phonetic: data.phonetic,
+                    definition_en: data.definition_en,
+                    definition_zh: data.definition_zh,
+                    example_sentences: data.example_sentences,
+                    addedAt: Date.now()
+                };
+                list.push(newItem);
                 chrome.storage.local.set({ vocabularyList: list });
             }
         });
@@ -92,17 +104,24 @@ export default function TranslationModal({ text, onClose, position }: Props) {
 
     return (
         <div
-            className="fixed z-[100000] pointer-events-auto bg-white rounded-xl shadow-2xl border border-gray-100 p-4 text-sm text-gray-800 font-sans"
+            className="fixed z-[100000] pointer-events-auto bg-white rounded-2xl border border-gray-200 p-5 text-sm text-gray-800 font-sans"
             style={{
                 left: safeX,
                 top: safeY,
                 width: modalWidth,
-                transform: 'translateX(-50%)'
+                transform: 'translateX(-50%)',
+                boxShadow: '0 4px 24px rgba(0, 0, 0, 0.08)'
             }}
             onClick={(e) => e.stopPropagation()}
         >
-            <div className="flex justify-between items-start mb-2">
-                <h3 className="font-bold text-lg text-blue-600">{text}</h3>
+            {/* Header: 单词 + 音标 + 操作按钮 */}
+            <div className="flex justify-between items-start mb-3">
+                <div className="flex items-baseline gap-2">
+                    <h3 className="font-bold text-xl text-blue-600">{text}</h3>
+                    {data?.phonetic && (
+                        <span className="text-gray-400 font-mono text-sm">{data.phonetic}</span>
+                    )}
+                </div>
                 <div className="flex gap-1">
                     <button
                         onClick={(e) => { e.stopPropagation(); setIsPinned(!isPinned); }}
@@ -138,28 +157,22 @@ export default function TranslationModal({ text, onClose, position }: Props) {
                 </div>
             ) : data ? (
                 <div className="space-y-3">
-                    <div className="flex items-baseline gap-2">
-                        <span className="text-gray-500 font-mono text-xs">{data.phonetic}</span>
-                    </div>
+                    {/* 英文释义 - 优先展示 */}
+                    {data.definition_en && (
+                        <p className="text-gray-800 text-[15px] leading-relaxed">{data.definition_en}</p>
+                    )}
 
-                    {/* 英文释义 */}
-                    <div>
-                        <p className="text-xs text-gray-400 mb-1">English</p>
-                        <p className="text-gray-700">{data.definition_en}</p>
-                    </div>
-
-                    {/* 中文释义 */}
-                    <div>
-                        <p className="text-xs text-gray-400 mb-1">中文</p>
-                        <p className="font-medium text-gray-800">{data.definition_zh}</p>
-                    </div>
+                    {/* 中文释义 - 灰色非强调 */}
+                    {data.definition_zh && (
+                        <p className="text-gray-500 text-[15px] leading-relaxed">{data.definition_zh}</p>
+                    )}
 
                     {/* 例句 */}
                     {data.example_sentences && data.example_sentences.length > 0 && (
-                        <div className="bg-blue-50 p-2 rounded text-xs border border-blue-100">
-                            <p className="text-blue-600 font-medium mb-1">Example</p>
-                            <p className="text-gray-700">{data.example_sentences[0].en}</p>
-                            <p className="text-gray-500 mt-0.5">{data.example_sentences[0].zh}</p>
+                        <div className="bg-blue-50/70 p-3 rounded-xl text-sm border border-blue-100">
+                            <p className="text-blue-600 font-semibold mb-2">Example</p>
+                            <p className="text-gray-700 leading-relaxed">{data.example_sentences[0].en}</p>
+                            <p className="text-gray-500 mt-1 leading-relaxed">{data.example_sentences[0].zh}</p>
                         </div>
                     )}
 

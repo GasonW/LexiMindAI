@@ -1,8 +1,13 @@
 import { createRoot } from 'react-dom/client';
 import ContentApp from './ContentApp';
 import '../index.css'; // Ensure tailwind is included in build
+import { clueHighlighter } from './ClueHighlighter';
 
 console.log('LexiMind AI Content Script Loaded');
+
+// Initialize the clue highlighter (singleton is auto-initialized on import)
+// This ensures vocabulary words are highlighted when Clue Mode is enabled
+void clueHighlighter;
 
 const HOST_ID = 'leximind-ai-host';
 
