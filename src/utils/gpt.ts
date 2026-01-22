@@ -1,5 +1,6 @@
 export interface TranslationResponse {
-    word: string;
+    word: string;              // 用户查询的原始词
+    lemma: string;             // 单词原形（如 walked -> walk）
     phonetic: string;
     definition_en: string;      // 英文释义
     definition_zh: string;      // 中文释义
@@ -7,30 +8,35 @@ export interface TranslationResponse {
         en: string;
         zh: string;
     }>;
+    variants: string[];         // 常见变形列表
 }
 
-export const SYSTEM_PROMPT = `You are LexiMind, an advanced language learning assistant specialized in helping users understand English words and phrases.
+export const SYSTEM_PROMPT = `You are Underline, an advanced language learning assistant specialized in helping users understand English words and phrases.
 
 Your task is to provide clear, educational explanations for the given word or phrase.
 
 Output Requirement:
 You MUST return a raw valid JSON object (no markdown formatting, no code blocks) with the following structure:
 {
-  "word": "the word being looked up",
-  "phonetic": "IPA phonetic transcription",
+  "word": "the exact word/phrase user looked up",
+  "lemma": "the base/dictionary form of the word",
+  "phonetic": "IPA phonetic transcription of the lemma",
   "definition_en": "Clear and concise English definition",
   "definition_zh": "准确的中文释义",
   "example_sentences": [
     {"en": "Example sentence in English.", "zh": "例句的中文翻译。"},
     {"en": "Another example sentence.", "zh": "另一个例句的中文翻译。"}
-  ]
+  ],
+  "variants": ["list", "of", "common", "inflected", "forms"]
 }
 
 Guidelines:
-- For 'phonetic': Use standard IPA notation (e.g., /ˈeksəmpəl/)
+- For 'lemma': Always return the base/dictionary form (e.g., "walked" -> "walk", "running" -> "run", "books" -> "book", "better" -> "good"). For phrases, return the phrase itself.
+- For 'phonetic': Use standard IPA notation for the lemma (e.g., /ˈeksəmpəl/)
 - For 'definition_en': Keep it simple, clear, and suitable for learners
 - For 'definition_zh': Provide accurate Chinese translation of the meaning
 - For 'example_sentences': Generate 2 practical, easy-to-understand sentences with Chinese translations
+- For 'variants': Include common inflected forms (plural, past tense, present participle, third person singular, comparative, superlative, etc.). For phrases, include common variations. Always include the lemma itself in this list.
 `;
 
 export interface APIConfig {
@@ -103,12 +109,15 @@ export async function translateWord(word: string): Promise<TranslationResponse> 
     try {
         // 尝试解析 JSON 响应
         const parsed = JSON.parse(content);
+        const lemma = parsed.lemma || parsed.word || word;
         return {
             word: parsed.word || word,
+            lemma: lemma,
             phonetic: parsed.phonetic || '',
             definition_en: parsed.definition_en || '',
             definition_zh: parsed.definition_zh || '',
-            example_sentences: parsed.example_sentences || []
+            example_sentences: parsed.example_sentences || [],
+            variants: parsed.variants || [lemma]
         };
     } catch {
         throw new Error('Failed to parse API response');

@@ -97,9 +97,9 @@ export default function TranslatePage() {
                 <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
-                            <span className="text-white font-bold text-sm">L</span>
+                            <span className="text-white font-bold text-sm">U</span>
                         </div>
-                        <span className="font-semibold text-gray-700">LexiMind AI</span>
+                        <span className="font-semibold text-gray-700">Underline</span>
                     </div>
                     <button
                         onClick={handleClose}

@@ -1,11 +1,11 @@
-console.log('LexiMind AI Background Service Worker Running');
+console.log('Underline Background Service Worker Running');
 
 chrome.runtime.onInstalled.addListener(() => {
-    console.log('LexiMind AI Installed');
+    console.log('Underline Installed');
 
     chrome.contextMenus.create({
-        id: "leximind-translate",
-        title: "Translate with LexiMind AI",
+        id: "underline-translate",
+        title: "Translate with Underline",
         contexts: ["selection"]
     });
 });
@@ -26,7 +26,7 @@ async function sendMessageWithRetry(tabId: number, message: any, retries = 3): P
 }
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-    if (info.menuItemId === "leximind-translate" && info.selectionText && tab?.id) {
+    if (info.menuItemId === "underline-translate" && info.selectionText && tab?.id) {
         const tabId = tab.id;
         const message = {
             type: 'TRIGGER_TRANSLATION',

@@ -1,6 +1,6 @@
-# LexiMind AI - 你的 AI 智能语言学习助手
+# Underline - 你的 AI 智能语言学习助手
 
-LexiMind AI 是一款基于 OpenAI GPT 模型的 Chrome 浏览器插件，旨在为你提供深度、准确的英语单词释义、发音、例句以及生词本复习功能，助你高效学习英语。
+Underline 是一款基于 OpenAI GPT 模型的 Chrome 浏览器插件，旨在为你提供深度、准确的英语单词释义、发音、例句以及生词本复习功能，助你高效学习英语。
 
 ## ✨ 主要功能
 
@@ -17,7 +17,7 @@ LexiMind AI 是一款基于 OpenAI GPT 模型的 Chrome 浏览器插件，旨在
 ### 2. 获取代码
 如果你已经下载了代码，请进入项目目录：
 ```bash
-cd LexiMindAI
+cd Underline
 ```
 
 ### 3. 安装依赖
@@ -37,12 +37,12 @@ npm run build
 2. 在页面右上角，开启 **"开发者模式" (Developer mode)** 开关。
 3. 点击左上角的 **"加载已解压的扩展程序" (Load unpacked)** 按钮。
 4. 选择本项目目录下的 `dist` 文件夹。
-5. 成功加载后，你将在扩展程序列表中看到 "LexiMind AI"。
+5. 成功加载后，你将在扩展程序列表中看到 "Underline"。
 
 ## 🚀 使用说明
 
 1. **配置 API Key**：
-   - 点击浏览器右上角的 LexiMind AI 插件图标打开弹窗。
+   - 点击浏览器右上角的 Underline 插件图标打开弹窗。
    - 点击 **Settings (设置)** 图标。
    - 在 **API Token** 输入框中填入你的 OpenAI API Key (以 `sk-` 开头)。
    - (可选) 如果你需要使用代理地址，请在 **Base URL** 中填入 (例如: `https://api.openai-proxy.com/v1`)。

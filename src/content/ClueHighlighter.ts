@@ -1,15 +1,16 @@
 import { vocabulary } from '../utils/wordMatching';
 import { type VocabularyItem, migrateVocabularyData } from '../types/vocabulary';
 
-const HIGHLIGHT_CLASS = 'leximind-clue-highlight';
-const HIGHLIGHT_ATTR = 'data-leximind-highlighted';
-const TOOLTIP_ID = 'leximind-clue-tooltip';
+const HIGHLIGHT_CLASS = 'underline-clue-highlight';
+const HIGHLIGHT_ATTR = 'data-underline-highlighted';
+const TOOLTIP_ID = 'underline-clue-tooltip';
 
 export class ClueHighlighter {
     isActive: boolean = false;
     private observer: MutationObserver | null = null;
     private styleElement: HTMLStyleElement | null = null;
-    private vocabularyMap: Map<string, VocabularyItem> = new Map();
+    private vocabularyMap: Map<string, VocabularyItem> = new Map();  // 原形 -> VocabularyItem
+    private variantToLemmaMap: Map<string, string> = new Map();      // 变形 -> 原形
     private currentTooltip: HTMLElement | null = null;
 
     constructor() {
@@ -29,11 +30,29 @@ export class ClueHighlighter {
                 chrome.storage.local.get(['vocabularyList'], (result: { vocabularyList?: string[] | VocabularyItem[] }) => {
                     const items = migrateVocabularyData(result.vocabularyList || []);
                     this.vocabularyMap.clear();
+                    this.variantToLemmaMap.clear();
+                    vocabulary.clear();
+
                     items.forEach(item => {
-                        vocabulary.insert(item.word);
-                        this.vocabularyMap.set(item.word.toLowerCase(), item);
+                        const lemma = item.word.toLowerCase().trim();
+                        // 存储原形到词汇信息的映射
+                        this.vocabularyMap.set(lemma, item);
+
+                        // 注册原形
+                        vocabulary.insert(lemma);
+                        this.variantToLemmaMap.set(lemma, lemma);
+
+                        // 注册所有变形，并建立变形到原形的映射
+                        if (item.variants && item.variants.length > 0) {
+                            item.variants.forEach(variant => {
+                                const v = variant.toLowerCase().trim();
+                                vocabulary.insert(v);
+                                this.variantToLemmaMap.set(v, lemma);
+                            });
+                        }
                     });
-                    console.log(`LexiMind: Loaded ${items.length} words into vocabulary`);
+
+                    console.log(`Underline: Loaded ${items.length} words into vocabulary (${vocabulary.singleWords.size} single words, ${vocabulary.phrases.size} phrases)`);
                     resolve();
                 });
             } else {
@@ -46,90 +65,90 @@ export class ClueHighlighter {
         if (this.styleElement) return;
 
         this.styleElement = document.createElement('style');
-        this.styleElement.id = 'leximind-clue-styles';
+        this.styleElement.id = 'underline-clue-styles';
         this.styleElement.textContent = `
             .${HIGHLIGHT_CLASS} {
                 text-decoration: underline;
-                text-decoration-color: #3b82f6;
+                text-decoration-color: #d4c4b0;
                 text-decoration-thickness: 2px;
                 text-underline-offset: 2px;
-                background-color: rgba(59, 130, 246, 0.1);
+                background-color: rgba(248, 246, 244, 0.8);
                 border-radius: 2px;
                 cursor: pointer;
                 transition: background-color 0.2s ease;
             }
             .${HIGHLIGHT_CLASS}:hover {
-                background-color: rgba(59, 130, 246, 0.25);
+                background-color: #f8f6f4;
             }
             #${TOOLTIP_ID} {
                 position: fixed;
                 z-index: 2147483647;
-                background: white;
-                border-radius: 12px;
-                border: 1px solid #e5e7eb;
-                box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
-                padding: 14px 18px;
+                background: #f8f6f4;
+                border-radius: 16px;
+                border: 1px solid rgba(0, 0, 0, 0.1);
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1), 0 20px 50px -12px rgba(0, 0, 0, 0.15);
+                padding: 20px;
                 width: 400px;
-                min-height: 120px;
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                font-family: "Public Sans", system-ui, sans-serif;
                 font-size: 14px;
-                line-height: 1.5;
-                color: #374151;
-                animation: leximind-tooltip-fade-in 0.15s ease-out;
+                line-height: 1.6;
+                color: #181111;
+                animation: underline-tooltip-fade-in 0.15s ease-out;
             }
-            @keyframes leximind-tooltip-fade-in {
+            @keyframes underline-tooltip-fade-in {
                 from { opacity: 0; transform: translateY(4px); }
                 to { opacity: 1; transform: translateY(0); }
             }
             #${TOOLTIP_ID} .tooltip-header {
                 display: flex;
                 align-items: baseline;
-                gap: 10px;
+                gap: 8px;
                 margin-bottom: 12px;
             }
             #${TOOLTIP_ID} .tooltip-word {
                 font-weight: 700;
                 font-size: 20px;
-                color: #2563eb;
+                color: #181111;
                 text-transform: capitalize;
             }
             #${TOOLTIP_ID} .tooltip-phonetic {
                 font-size: 14px;
-                color: #9ca3af;
+                color: rgba(24, 17, 17, 0.4);
                 font-family: monospace;
             }
             #${TOOLTIP_ID} .tooltip-definition-en {
                 font-size: 15px;
-                color: #1f2937;
-                line-height: 1.6;
-                margin-bottom: 8px;
+                color: #181111;
+                line-height: 1.5;
             }
             #${TOOLTIP_ID} .tooltip-definition-zh {
-                font-size: 13px;
-                color: #9ca3af;
+                font-size: 15px;
+                color: rgba(24, 17, 17, 0.5);
                 line-height: 1.5;
-                margin-top: 4px;
+                margin-top: 12px;
             }
             #${TOOLTIP_ID} .tooltip-example {
-                background: rgba(239, 246, 255, 0.7);
-                border: 1px solid #dbeafe;
+                background: rgba(255, 255, 255, 0.6);
+                border: 1px solid rgba(0, 0, 0, 0.05);
                 border-radius: 12px;
-                padding: 12px 14px;
+                padding: 12px;
                 margin-top: 12px;
                 font-size: 14px;
             }
             #${TOOLTIP_ID} .tooltip-example-label {
-                font-size: 13px;
+                font-size: 9px;
                 font-weight: 600;
-                color: #2563eb;
-                margin-bottom: 6px;
+                color: rgba(24, 17, 17, 0.4);
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.15em;
             }
             #${TOOLTIP_ID} .tooltip-example-en {
-                color: #374151;
+                color: rgba(24, 17, 17, 0.7);
                 line-height: 1.5;
             }
             #${TOOLTIP_ID} .tooltip-example-zh {
-                color: #6b7280;
+                color: rgba(24, 17, 17, 0.4);
                 margin-top: 4px;
                 line-height: 1.5;
             }
@@ -141,12 +160,13 @@ export class ClueHighlighter {
         document.addEventListener('click', (e) => {
             const target = e.target as HTMLElement;
 
-            // Check if clicked on a highlighted word
+            // Check if clicked on a highlighted word/phrase
             if (target.classList.contains(HIGHLIGHT_CLASS)) {
                 e.preventDefault();
                 e.stopPropagation();
-                const word = target.textContent?.toLowerCase() || '';
-                this.showTooltip(word, target);
+                // Use the data attribute for vocabulary key, fallback to text content
+                const key = target.getAttribute('data-vocabulary-key') || target.textContent?.toLowerCase() || '';
+                this.showTooltip(key, target);
                 return;
             }
 
@@ -169,44 +189,64 @@ export class ClueHighlighter {
         });
     }
 
-    private showTooltip(word: string, target: HTMLElement) {
+    // Check if the content is a sentence/phrase (more than 4 words or contains punctuation)
+    private isSentence(text: string): boolean {
+        const words = text.trim().split(/\s+/);
+        const hasPunctuation = /[.!?,;:]/.test(text);
+        return words.length > 4 || hasPunctuation;
+    }
+
+    private showTooltip(key: string, target: HTMLElement) {
         this.hideTooltip();
 
-        const item = this.vocabularyMap.get(word);
+        // 先通过变形找到原形
+        const lemma = this.variantToLemmaMap.get(key.toLowerCase().trim());
+        const item = lemma ? this.vocabularyMap.get(lemma) : this.vocabularyMap.get(key);
+
         if (!item) {
-            console.log(`LexiMind: No definition found for "${word}"`);
+            console.log(`Underline: No definition found for "${key}"`);
             return;
         }
 
         const tooltip = document.createElement('div');
         tooltip.id = TOOLTIP_ID;
 
+        const isSentence = this.isSentence(item.word);
+
         let html = `
             <div class="tooltip-header">
-                <span class="tooltip-word">${item.word}</span>
-                ${item.phonetic ? `<span class="tooltip-phonetic">${item.phonetic}</span>` : ''}
+                <span class="tooltip-word" style="${isSentence ? 'font-size: 16px; text-transform: none;' : ''}">${item.word}</span>
+                ${!isSentence && item.phonetic ? `<span class="tooltip-phonetic">${item.phonetic}</span>` : ''}
             </div>
         `;
 
-        // 英文释义优先展示
-        if (item.definition_en) {
-            html += `<div class="tooltip-definition-en">${item.definition_en}</div>`;
-        }
+        if (isSentence) {
+            // For sentences, only show translation
+            if (item.definition_zh) {
+                html += `<div class="tooltip-definition-zh" style="font-size: 15px; color: #374151;">${item.definition_zh}</div>`;
+            }
+        } else {
+            // For words and phrases, show full details
+            // 英文释义优先展示
+            if (item.definition_en) {
+                html += `<div class="tooltip-definition-en">${item.definition_en}</div>`;
+            }
 
-        // 中文释义用灰色
-        if (item.definition_zh) {
-            html += `<div class="tooltip-definition-zh">${item.definition_zh}</div>`;
-        }
+            // 中文释义用灰色
+            if (item.definition_zh) {
+                html += `<div class="tooltip-definition-zh">${item.definition_zh}</div>`;
+            }
 
-        if (item.example_sentences && item.example_sentences.length > 0) {
-            const example = item.example_sentences[0];
-            html += `
-                <div class="tooltip-example">
-                    <div class="tooltip-example-label">Example</div>
-                    <div class="tooltip-example-en">${example.en}</div>
-                    <div class="tooltip-example-zh">${example.zh}</div>
-                </div>
-            `;
+            if (item.example_sentences && item.example_sentences.length > 0) {
+                const example = item.example_sentences[0];
+                html += `
+                    <div class="tooltip-example">
+                        <div class="tooltip-example-label">Example</div>
+                        <div class="tooltip-example-en">${example.en}</div>
+                        <div class="tooltip-example-zh">${example.zh}</div>
+                    </div>
+                `;
+            }
         }
 
         tooltip.innerHTML = html;
@@ -256,10 +296,25 @@ export class ClueHighlighter {
                         const newValue = changes.vocabularyList.newValue as string[] | VocabularyItem[] | undefined;
                         const newItems = migrateVocabularyData(newValue || []);
                         this.vocabularyMap.clear();
+                        this.variantToLemmaMap.clear();
+                        vocabulary.clear();
+
                         newItems.forEach(item => {
-                            vocabulary.insert(item.word);
-                            this.vocabularyMap.set(item.word.toLowerCase(), item);
+                            const lemma = item.word.toLowerCase().trim();
+                            this.vocabularyMap.set(lemma, item);
+
+                            vocabulary.insert(lemma);
+                            this.variantToLemmaMap.set(lemma, lemma);
+
+                            if (item.variants && item.variants.length > 0) {
+                                item.variants.forEach(variant => {
+                                    const v = variant.toLowerCase().trim();
+                                    vocabulary.insert(v);
+                                    this.variantToLemmaMap.set(v, lemma);
+                                });
+                            }
                         });
+
                         // Re-highlight if active
                         if (this.isActive) {
                             this.removeHighlights();
@@ -302,7 +357,7 @@ export class ClueHighlighter {
                             const element = node as Element;
                             // Skip our own highlights and extension elements
                             if (!element.classList?.contains(HIGHLIGHT_CLASS) &&
-                                !element.id?.includes('leximind')) {
+                                !element.id?.includes('underline')) {
                                 shouldRescan = true;
                                 break;
                             }
@@ -347,7 +402,7 @@ export class ClueHighlighter {
 
         // Check if vocabulary is empty
         if (vocabulary.wordSet.size === 0) {
-            console.log('LexiMind: No vocabulary words to highlight');
+            console.log('Underline: No vocabulary words to highlight');
             return;
         }
 
@@ -388,7 +443,7 @@ export class ClueHighlighter {
                     }
 
                     // Skip extension elements
-                    if (parent.id?.includes('leximind') || parent.closest('#leximind-ai-host')) {
+                    if (parent.id?.includes('underline') || parent.closest('#underline-ai-host')) {
                         return NodeFilter.FILTER_REJECT;
                     }
 
@@ -414,25 +469,70 @@ export class ClueHighlighter {
         const text = textNode.textContent || '';
         if (!text.trim()) return;
 
-        // Use word boundary regex to find words
+        const matches: { text: string; index: number; key: string }[] = [];
+
+        // First, find all phrase matches (longer matches take priority)
+        const phrases = vocabulary.getPhrases();
+
+        for (const phrase of phrases) {
+            // Create a regex that matches the phrase with word boundaries
+            const escapedPhrase = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const phraseRegex = new RegExp(`\\b${escapedPhrase}\\b`, 'gi');
+            let match;
+
+            while ((match = phraseRegex.exec(text)) !== null) {
+                matches.push({
+                    text: match[0],
+                    index: match.index,
+                    key: phrase
+                });
+            }
+        }
+
+        // Then find single word matches
         const wordRegex = /\b([a-zA-Z]{3,})\b/g;
-        const matches: { word: string; index: number }[] = [];
         let match;
 
         while ((match = wordRegex.exec(text)) !== null) {
             const word = match[1];
-            if (vocabulary.has(word)) {
-                matches.push({ word: match[0], index: match.index });
+            if (vocabulary.hasSingleWord(word)) {
+                // Check if this word is not already part of a phrase match
+                const wordStart = match.index;
+                const wordEnd = match.index + match[0].length;
+
+                const isPartOfPhrase = matches.some(m =>
+                    wordStart >= m.index && wordEnd <= m.index + m.text.length
+                );
+
+                if (!isPartOfPhrase) {
+                    matches.push({
+                        text: match[0],
+                        index: match.index,
+                        key: word.toLowerCase()
+                    });
+                }
             }
         }
 
         if (matches.length === 0) return;
 
-        // Create a document fragment with highlighted words
+        // Sort matches by index (for proper ordering when creating fragments)
+        matches.sort((a, b) => a.index - b.index);
+
+        // Remove overlapping matches (keep the first/longer one)
+        const filteredMatches: typeof matches = [];
+        for (const m of matches) {
+            const lastMatch = filteredMatches[filteredMatches.length - 1];
+            if (!lastMatch || m.index >= lastMatch.index + lastMatch.text.length) {
+                filteredMatches.push(m);
+            }
+        }
+
+        // Create a document fragment with highlighted words/phrases
         const fragment = document.createDocumentFragment();
         let lastIndex = 0;
 
-        for (const { word, index } of matches) {
+        for (const { text: matchText, index, key } of filteredMatches) {
             // Add text before the match
             if (index > lastIndex) {
                 fragment.appendChild(document.createTextNode(text.slice(lastIndex, index)));
@@ -442,10 +542,11 @@ export class ClueHighlighter {
             const span = document.createElement('span');
             span.className = HIGHLIGHT_CLASS;
             span.setAttribute(HIGHLIGHT_ATTR, 'true');
-            span.textContent = word;
+            span.setAttribute('data-vocabulary-key', key);
+            span.textContent = matchText;
             fragment.appendChild(span);
 
-            lastIndex = index + word.length;
+            lastIndex = index + matchText.length;
         }
 
         // Add remaining text
@@ -476,7 +577,7 @@ export class ClueHighlighter {
             }
         });
 
-        console.log(`LexiMind: Removed ${highlights.length} highlights`);
+        console.log(`Underline: Removed ${highlights.length} highlights`);
     }
 }
 

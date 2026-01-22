@@ -45,7 +45,7 @@ export default function ContentApp() {
                         x = rect.left + rect.width / 2;
                         bottom = rect.bottom;
                     } catch {
-                        console.log('LexiMind: 使用默认位置显示翻译框');
+                        console.log('Underline: 使用默认位置显示翻译框');
                     }
                 }
 
@@ -101,16 +101,23 @@ export default function ContentApp() {
                 <div
                     className="fixed z-[99999] pointer-events-auto"
                     style={{
-                        left: selection.x,
-                        top: selection.bottom + 8,
-                        transform: 'translateX(-50%)'
+                        left: selection.x + 20,
+                        top: selection.bottom + 4
                     }}
                 >
                     <button
-                        className="bg-blue-600 text-white p-2 rounded-full shadow-lg hover:bg-blue-700 transition-transform hover:scale-110 flex items-center justify-center cursor-pointer"
+                        className="flex items-center justify-center cursor-pointer transition-transform hover:scale-110"
+                        style={{
+                            width: 24,
+                            height: 24,
+                            borderRadius: '50%',
+                            background: '#f8f6f4',
+                            border: '1px solid rgba(0, 0, 0, 0.08)',
+                            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'
+                        }}
                         onClick={() => setShowModal(true)}
                     >
-                        <MessageSquare size={20} />
+                        <MessageSquare size={12} color="#181111" strokeWidth={2.5} />
                     </button>
                 </div>
             )}

@@ -1,6 +1,7 @@
 /**
  * Vocabulary Manager for high-performance word matching.
  * Uses a Set for O(1) exact lookups and a Trie for potential prefix matching optimizations.
+ * Supports both single words and phrases.
  */
 
 class TrieNode {
@@ -16,17 +17,30 @@ class TrieNode {
 export class VocabularyTrie {
     root: TrieNode;
     wordSet: Set<string>;
+    // Separate sets for single words and phrases for efficient matching
+    singleWords: Set<string>;
+    phrases: Set<string>;
 
     constructor() {
         this.root = new TrieNode();
         this.wordSet = new Set();
+        this.singleWords = new Set();
+        this.phrases = new Set();
     }
 
     insert(word: string) {
-        const normalized = word.toLowerCase();
+        const normalized = word.toLowerCase().trim();
         if (this.wordSet.has(normalized)) return;
 
         this.wordSet.add(normalized);
+
+        // Check if it's a phrase (contains space) or single word
+        if (normalized.includes(' ')) {
+            this.phrases.add(normalized);
+        } else {
+            this.singleWords.add(normalized);
+        }
+
         let current = this.root;
         for (const char of normalized) {
             if (!current.children.has(char)) {
@@ -38,7 +52,19 @@ export class VocabularyTrie {
     }
 
     has(word: string): boolean {
-        return this.wordSet.has(word.toLowerCase());
+        return this.wordSet.has(word.toLowerCase().trim());
+    }
+
+    hasSingleWord(word: string): boolean {
+        return this.singleWords.has(word.toLowerCase().trim());
+    }
+
+    hasPhrase(phrase: string): boolean {
+        return this.phrases.has(phrase.toLowerCase().trim());
+    }
+
+    getPhrases(): string[] {
+        return Array.from(this.phrases);
     }
 
     /**
@@ -51,6 +77,13 @@ export class VocabularyTrie {
             current = current.children.get(char)!;
         }
         return true;
+    }
+
+    clear() {
+        this.root = new TrieNode();
+        this.wordSet.clear();
+        this.singleWords.clear();
+        this.phrases.clear();
     }
 }
 

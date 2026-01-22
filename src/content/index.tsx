@@ -3,13 +3,13 @@ import ContentApp from './ContentApp';
 import '../index.css'; // Ensure tailwind is included in build
 import { clueHighlighter } from './ClueHighlighter';
 
-console.log('LexiMind AI Content Script Loaded');
+console.log('Underline Content Script Loaded');
 
 // Initialize the clue highlighter (singleton is auto-initialized on import)
 // This ensures vocabulary words are highlighted when Clue Mode is enabled
 void clueHighlighter;
 
-const HOST_ID = 'leximind-ai-host';
+const HOST_ID = 'underline-ai-host';
 
 function init() {
     if (document.getElementById(HOST_ID)) return;
@@ -30,7 +30,7 @@ function init() {
 
     // 创建根容器，设置必要的样式
     const rootContainer = document.createElement('div');
-    rootContainer.id = 'leximind-root';
+    rootContainer.id = 'underline-root';
     rootContainer.style.position = 'fixed';
     rootContainer.style.top = '0';
     rootContainer.style.left = '0';
@@ -48,13 +48,13 @@ function init() {
 
     // 等待样式加载完成后再渲染 React 组件
     styleLink.onload = () => {
-        console.log('LexiMind AI: 样式加载完成');
+        console.log('Underline: 样式加载完成');
         createRoot(rootContainer).render(<ContentApp />);
     };
 
     // 样式加载失败的备选方案
     styleLink.onerror = () => {
-        console.warn('LexiMind AI: 样式加载失败，使用内联样式');
+        console.warn('Underline: 样式加载失败，使用内联样式');
         // 添加关键的内联样式作为备选
         const fallbackStyle = document.createElement('style');
         fallbackStyle.textContent = `
@@ -79,7 +79,7 @@ function init() {
     // 如果样式在 3 秒内未加载完成，强制渲染
     setTimeout(() => {
         if (!rootContainer.hasChildNodes()) {
-            console.warn('LexiMind AI: 样式加载超时，强制渲染');
+            console.warn('Underline: 样式加载超时，强制渲染');
             createRoot(rootContainer).render(<ContentApp />);
         }
     }, 3000);

@@ -5,7 +5,9 @@
       "Bash(find:*)",
       "Bash(npm run build:*)",
       "mcp__browsermcp__browser_navigate",
-      "Bash(BUILD_TARGET=content npm run build:*)"
+      "Bash(BUILD_TARGET=content npm run build:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

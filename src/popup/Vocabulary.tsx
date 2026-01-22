@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Trash2, BookOpen, ChevronDown, ChevronUp } from 'lucide-react';
 import { type VocabularyItem, migrateVocabularyData } from '../types/vocabulary';
 
 interface Props {
@@ -10,60 +9,58 @@ function WordCard({ item, onDelete }: { item: VocabularyItem; onDelete: () => vo
     const [expanded, setExpanded] = useState(false);
 
     return (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-paper-white rounded-xl zen-shadow border border-black/5 overflow-hidden">
             <div
-                className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-gray-50"
+                className="flex items-center justify-between px-3 py-2.5 cursor-pointer hover:bg-black/[0.02]"
                 onClick={() => setExpanded(!expanded)}
             >
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                        <span className="font-medium text-gray-800 capitalize">{item.word}</span>
+                        <span className="font-medium text-sm text-ink capitalize">{item.word}</span>
                         {item.phonetic && (
-                            <span className="text-xs text-gray-400 font-mono">{item.phonetic}</span>
+                            <span className="text-[11px] text-ink/30 font-mono">{item.phonetic}</span>
                         )}
                     </div>
                     {item.definition_zh && !expanded && (
-                        <p className="text-xs text-gray-500 truncate mt-0.5">{item.definition_zh}</p>
+                        <p className="text-xs text-ink/50 truncate">{item.definition_zh}</p>
                     )}
                 </div>
-                <div className="flex items-center gap-1 ml-2">
+                <div className="flex items-center gap-0.5 ml-2">
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
                             onDelete();
                         }}
-                        className="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                        className="p-1 text-ink/20 hover:text-primary hover:bg-primary/5 rounded-full transition-colors"
                         title="Remove"
                     >
-                        <Trash2 size={16} />
+                        <span className="material-symbols-outlined text-[18px]">delete</span>
                     </button>
-                    {expanded ? (
-                        <ChevronUp size={16} className="text-gray-400" />
-                    ) : (
-                        <ChevronDown size={16} className="text-gray-400" />
-                    )}
+                    <span className="material-symbols-outlined text-ink/30 text-[18px]">
+                        {expanded ? 'expand_less' : 'expand_more'}
+                    </span>
                 </div>
             </div>
 
             {expanded && (
-                <div className="px-4 pb-3 pt-1 border-t border-gray-100 space-y-2">
+                <div className="px-3 pb-2.5 pt-1 border-t border-black/5 space-y-1.5">
                     {item.definition_en && (
                         <div>
-                            <p className="text-xs text-gray-400 mb-0.5">English</p>
-                            <p className="text-sm text-gray-700">{item.definition_en}</p>
+                            <p className="text-[9px] uppercase kerning-wide text-ink/30 mb-0.5">English</p>
+                            <p className="text-xs text-ink/70">{item.definition_en}</p>
                         </div>
                     )}
                     {item.definition_zh && (
                         <div>
-                            <p className="text-xs text-gray-400 mb-0.5">中文</p>
-                            <p className="text-sm text-gray-800 font-medium">{item.definition_zh}</p>
+                            <p className="text-[9px] uppercase kerning-wide text-ink/30 mb-0.5">中文</p>
+                            <p className="text-xs text-ink font-medium">{item.definition_zh}</p>
                         </div>
                     )}
                     {item.example_sentences && item.example_sentences.length > 0 && (
-                        <div className="bg-blue-50 p-2 rounded text-xs border border-blue-100">
-                            <p className="text-blue-600 font-medium mb-1">Example</p>
-                            <p className="text-gray-700">{item.example_sentences[0].en}</p>
-                            <p className="text-gray-500 mt-0.5">{item.example_sentences[0].zh}</p>
+                        <div className="bg-primary/5 p-2 rounded-lg text-xs border border-primary/10">
+                            <p className="text-[9px] uppercase kerning-wide text-ink/40 mb-1">Example</p>
+                            <p className="text-ink/70 text-[11px]">{item.example_sentences[0].en}</p>
+                            <p className="text-ink/40 text-[11px] mt-0.5">{item.example_sentences[0].zh}</p>
                         </div>
                     )}
                 </div>
@@ -77,10 +74,8 @@ export default function Vocabulary({ onBack }: Props) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // 从 chrome.storage 加载词汇表
         chrome.storage.local.get(['vocabularyList'], (result: { vocabularyList?: string[] | VocabularyItem[] }) => {
             const list = migrateVocabularyData(result.vocabularyList || []);
-            // Sort by addedAt descending (newest first)
             list.sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
             setWords(list);
             setLoading(false);
@@ -93,68 +88,44 @@ export default function Vocabulary({ onBack }: Props) {
         chrome.storage.local.set({ vocabularyList: newList });
     };
 
-    const handleClearAll = () => {
-        if (confirm('Are you sure you want to clear all words?')) {
-            setWords([]);
-            chrome.storage.local.set({ vocabularyList: [] });
-        }
-    };
-
     return (
         <div className="flex flex-col h-full">
             {/* Header */}
-            <div className="flex items-center gap-3 mb-4">
-                <button
-                    onClick={onBack}
-                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                >
-                    <ArrowLeft size={20} className="text-gray-600" />
-                </button>
-                <h2 className="text-lg font-bold text-gray-800">My Vocabulary</h2>
-            </div>
-
-            {/* Stats */}
-            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl p-4 mb-4 text-white">
-                <div className="flex items-center gap-3">
-                    <BookOpen size={24} />
-                    <div>
-                        <p className="text-2xl font-bold">{words.length}</p>
-                        <p className="text-blue-100 text-sm">Words collected</p>
-                    </div>
+            <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={onBack}
+                        className="p-1 -ml-1 hover:bg-black/5 rounded-full transition-colors"
+                    >
+                        <span className="material-symbols-outlined text-ink/50 text-xl">chevron_left</span>
+                    </button>
+                    <h2 className="text-sm font-medium tracking-[0.1em] uppercase text-ink">Vocabulary</h2>
                 </div>
+                <span className="text-xs text-ink/40">{words.length} words</span>
             </div>
 
             {/* Word List */}
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto space-y-2">
                 {loading ? (
-                    <div className="text-center text-gray-400 py-8">Loading...</div>
+                    <div className="text-center text-ink/30 py-8">
+                        <span className="material-symbols-outlined animate-spin text-2xl">progress_activity</span>
+                    </div>
                 ) : words.length === 0 ? (
                     <div className="text-center py-8">
-                        <p className="text-gray-400 mb-2">No words yet</p>
-                        <p className="text-gray-300 text-sm">Select text on any page and click "Add to Vocabulary"</p>
+                        <span className="material-symbols-outlined text-ink/20 text-3xl mb-2">auto_stories</span>
+                        <p className="text-ink/40 text-sm mb-1">No words yet</p>
+                        <p className="text-ink/30 text-xs">Select text on any page to add</p>
                     </div>
                 ) : (
-                    <div className="space-y-2">
-                        {words.map((item, index) => (
-                            <WordCard
-                                key={`${item.word}-${index}`}
-                                item={item}
-                                onDelete={() => handleDelete(item.word)}
-                            />
-                        ))}
-                    </div>
+                    words.map((item, index) => (
+                        <WordCard
+                            key={`${item.word}-${index}`}
+                            item={item}
+                            onDelete={() => handleDelete(item.word)}
+                        />
+                    ))
                 )}
             </div>
-
-            {/* Clear All Button */}
-            {words.length > 0 && (
-                <button
-                    onClick={handleClearAll}
-                    className="mt-4 w-full py-2 text-red-500 hover:bg-red-50 rounded-lg text-sm font-medium transition-colors"
-                >
-                    Clear All
-                </button>
-            )}
         </div>
     );
 }

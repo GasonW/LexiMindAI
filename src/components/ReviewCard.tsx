@@ -16,14 +16,10 @@ interface ReviewCardProps {
 export default function ReviewCard({ data }: ReviewCardProps) {
     const [isFlipped, setIsFlipped] = useState(false);
 
-    // Reset flip when data changes
-    // Note: stronger effect dependency might be needed if strictly resetting, 
-    // but key-based re-mounting in parent is usually cleaner for flashcards.
-
     return (
-        <div className="w-full h-64 perspective-1000 group">
+        <div className="w-full h-[180px] perspective-1000 group" style={{ perspective: '1000px' }}>
             <motion.div
-                className="relative w-full h-full preserve-3d cursor-pointer"
+                className="relative w-full h-full cursor-pointer"
                 initial={false}
                 animate={{ rotateY: isFlipped ? 180 : 0 }}
                 transition={{ duration: 0.4, type: "spring", stiffness: 260, damping: 20 }}
@@ -31,37 +27,42 @@ export default function ReviewCard({ data }: ReviewCardProps) {
                 onClick={() => setIsFlipped(!isFlipped)}
             >
                 {/* Front */}
-                <div className="absolute w-full h-full backface-hidden bg-white/80 backdrop-blur-md rounded-2xl shadow-xl flex flex-col items-center justify-center p-6 border border-white/60">
-                    <h2 className="text-3xl font-bold tracking-tight text-slate-800 mb-3 text-center break-words w-full">{data.word}</h2>
-                    <p className="italic text-gray-600 text-center text-sm line-clamp-3">
-                        "{data.context}"
-                    </p>
-                    <div className="mt-auto pt-4 text-[10px] text-blue-400 font-semibold uppercase tracking-widest opacity-80">Tap to Flip</div>
+                <div
+                    className="absolute inset-0 bg-paper-white rounded-2xl zen-shadow flex flex-col p-4 border border-black/5"
+                    style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
+                >
+                    <div className="flex-1 flex flex-col items-center justify-center overflow-y-auto">
+                        <h2 className="text-2xl font-bold tracking-tight text-ink mb-2 text-center break-words w-full shrink-0">{data.word}</h2>
+                        <p className="italic text-ink/60 text-center text-sm leading-relaxed px-2">
+                            "{data.context}"
+                        </p>
+                    </div>
+                    <span className="shrink-0 text-center text-[9px] uppercase kerning-wide font-bold text-ink/30 pt-2">Tap to reveal</span>
                 </div>
 
                 {/* Back */}
                 <div
-                    className="absolute w-full h-full backface-hidden bg-white rounded-2xl shadow-xl p-6 flex flex-col border border-gray-100"
-                    style={{ transform: 'rotateY(180deg)' }}
+                    className="absolute inset-0 bg-paper-white rounded-2xl zen-shadow p-2.5 flex flex-col border border-black/5"
+                    style={{ transform: 'rotateY(180deg)', backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
                 >
-                    <div className="bg-blue-50/50 p-4 rounded-xl flex-1 flex flex-col justify-center border border-blue-100/50 space-y-3">
+                    <div className="bg-primary/5 p-2.5 rounded-xl flex-1 overflow-y-auto border border-primary/10 space-y-2">
                         {/* Chinese Translation */}
                         <div>
-                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Meaning</h3>
-                            <p className="font-bold text-lg text-slate-800">
+                            <h3 className="text-[9px] uppercase kerning-wide font-semibold text-ink/40 mb-0.5">Meaning</h3>
+                            <p className="font-bold text-sm text-ink leading-snug">
                                 {data.translation}
                             </p>
                         </div>
 
                         {/* English Definition */}
                         <div>
-                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Definition</h3>
-                            <p className="text-sm text-blue-800/80 leading-relaxed italic">
+                            <h3 className="text-[9px] uppercase kerning-wide font-semibold text-ink/40 mb-0.5">Definition</h3>
+                            <p className="text-xs text-ink/70 leading-relaxed italic">
                                 {data.definition}
                             </p>
                         </div>
                     </div>
-                    <div className="mt-3 text-xs text-gray-400 text-center font-medium">LexiMind Review</div>
+                    <div className="mt-1.5 text-[8px] uppercase kerning-wide text-ink/30 text-center font-medium shrink-0">Underline Review</div>
                 </div>
             </motion.div>
         </div>

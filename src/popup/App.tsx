@@ -1,41 +1,64 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import ReviewCard, { type WordData } from '../components/ReviewCard'
 import Settings from './Settings';
 import Vocabulary from './Vocabulary';
-import { Settings as SettingsIcon, ChevronRight, ChevronLeft, RefreshCw, BookOpen } from 'lucide-react'
+import { type VocabularyItem, migrateVocabularyData } from '../types/vocabulary';
 
-// Mock Data for Review
-const MOCK_WORDS: WordData[] = [
-  {
-    word: "Serendipity",
-    context: "We found the cafe by pure serendipity.",
-    definition: "The occurrence and development of events by chance in a happy or beneficial way.",
-    translation: "机缘凑巧"
-  },
-  {
-    word: "Ephemeral",
-    context: "Fashions are ephemeral, changing with every season.",
-    definition: "Lasting for a very short time.",
-    translation: "转瞬即逝的"
-  },
-  {
-    word: "Mellifluous",
-    context: "She had a rich, mellifluous voice that turned heads.",
-    definition: "(of a voice or words) sweet or musical; pleasant to hear.",
-    translation: "声音甜美的"
+const MAX_REVIEW_WORDS = 12;
+
+// Convert VocabularyItem to WordData for ReviewCard
+function convertToWordData(item: VocabularyItem): WordData {
+  return {
+    word: item.word,
+    context: item.example_sentences?.[0]?.en || '',
+    definition: item.definition_en || '',
+    translation: item.definition_zh || ''
+  };
+}
+
+// Shuffle array using Fisher-Yates algorithm
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
-];
+  return shuffled;
+}
 
-function Toggle({ label, active, onToggle }: { label: string, active: boolean, onToggle: () => void }) {
+// Get random items from vocabulary
+function getRandomReviewWords(vocabulary: VocabularyItem[], count: number): WordData[] {
+  if (vocabulary.length === 0) return [];
+  const shuffled = shuffleArray(vocabulary);
+  const selected = shuffled.slice(0, Math.min(count, shuffled.length));
+  return selected.map(convertToWordData);
+}
+
+function Toggle({ active, onToggle }: { active: boolean, onToggle: () => void }) {
   return (
-    <div className="flex items-center justify-between py-3 border-b border-gray-100">
-      <span className="font-medium text-gray-700">{label}</span>
-      <button
-        onClick={onToggle}
-        className={`w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out ${active ? 'bg-blue-500' : 'bg-gray-300'}`}
-      >
-        <div className={`bg-white w-4 h-4 rounded-full shadow-md transform duration-200 ease-in-out ${active ? 'translate-x-6' : 'translate-x-0'}`} />
-      </button>
+    <div className="bg-paper-white rounded-xl p-4 zen-shadow border border-black/5 flex items-center justify-between">
+      <div className="flex flex-col gap-0.5">
+        <span className="text-[9px] uppercase kerning-wide font-medium text-ink/40">Underline it</span>
+        <span className={`text-[10px] font-bold tracking-widest uppercase ${active ? 'text-primary' : 'text-ink/30'}`}>
+          {active ? 'Active' : 'Inactive'}
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className={`text-[8px] font-bold tracking-tighter uppercase ${!active ? 'text-ink/40' : 'text-ink/20'}`}>
+          Off
+        </span>
+        <button
+          onClick={onToggle}
+          className="relative inline-flex items-center cursor-pointer group"
+        >
+          <div className={`w-10 h-5 rounded-full inset-shadow-sm transition-colors duration-300 flex items-center px-0.5 ${active ? 'bg-primary' : 'bg-ink/20'}`}>
+            <div className={`size-4 bg-white rounded-full shadow-md transition-all duration-300 ${active ? 'ml-auto' : 'ml-0'}`} />
+          </div>
+        </button>
+        <span className={`text-[8px] font-bold tracking-tighter uppercase ${active ? 'text-primary' : 'text-ink/20'}`}>
+          On
+        </span>
+      </div>
     </div>
   )
 }
@@ -44,29 +67,51 @@ function App() {
   const [view, setView] = useState<'home' | 'settings' | 'vocabulary'>('home');
   const [clueMode, setClueMode] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [vocabCount, setVocabCount] = useState(0);
+  const [reviewWords, setReviewWords] = useState<WordData[]>([]);
+  const [allVocabulary, setAllVocabulary] = useState<VocabularyItem[]>([]);
 
-  useEffect(() => {
-    // Sync Clue Mode from storage
+  // Load vocabulary and generate random review words
+  const loadVocabularyAndReview = useCallback(() => {
     if (typeof chrome !== 'undefined' && chrome.storage) {
-      chrome.storage.local.get(['clueMode', 'vocabularyList'], (result: { clueMode?: boolean; vocabularyList?: string[] }) => {
+      chrome.storage.local.get(['clueMode', 'vocabularyList'], (result: { clueMode?: boolean; vocabularyList?: string[] | VocabularyItem[] }) => {
         if (result.clueMode) setClueMode(true);
-        setVocabCount(result.vocabularyList?.length || 0);
+
+        const items = migrateVocabularyData(result.vocabularyList || []);
+        setAllVocabulary(items);
+
+        // Generate random review words
+        const randomWords = getRandomReviewWords(items, MAX_REVIEW_WORDS);
+        setReviewWords(randomWords);
+        setCurrentIndex(0);
       });
     }
-  }, [view]); // 当视图切换时刷新数据
+  }, []);
+
+  useEffect(() => {
+    loadVocabularyAndReview();
+  }, [view, loadVocabularyAndReview]);
+
+  // Refresh with new random words
+  const handleShuffle = () => {
+    const randomWords = getRandomReviewWords(allVocabulary, MAX_REVIEW_WORDS);
+    setReviewWords(randomWords);
+    setCurrentIndex(0);
+  };
 
   const handleNext = () => {
-    setCurrentIndex((prev) => (prev + 1) % MOCK_WORDS.length);
+    if (reviewWords.length === 0) return;
+    setCurrentIndex((prev) => (prev + 1) % reviewWords.length);
   };
 
   const handlePrev = () => {
-    setCurrentIndex((prev) => (prev - 1 + MOCK_WORDS.length) % MOCK_WORDS.length);
+    if (reviewWords.length === 0) return;
+    setCurrentIndex((prev) => (prev - 1 + reviewWords.length) % reviewWords.length);
   };
 
   if (view === 'settings') {
     return (
-      <div className="w-[350px] min-h-[500px] bg-slate-50 font-sans p-6">
+      <div className="w-[340px] h-[420px] bg-paper-creme font-sans p-5 overflow-hidden relative">
+        <div className="fixed inset-0 paper-grain z-50 pointer-events-none"></div>
         <Settings onBack={() => setView('home')} />
       </div>
     );
@@ -74,44 +119,45 @@ function App() {
 
   if (view === 'vocabulary') {
     return (
-      <div className="w-[350px] min-h-[500px] bg-slate-50 font-sans p-6">
+      <div className="w-[340px] h-[420px] bg-paper-creme font-sans p-5 overflow-hidden relative">
+        <div className="fixed inset-0 paper-grain z-50 pointer-events-none"></div>
         <Vocabulary onBack={() => setView('home')} />
       </div>
     );
   }
 
   return (
-    <div className="w-[350px] min-h-[500px] bg-slate-50 font-sans text-gray-800 flex flex-col">
-      <header className="bg-white p-4 shadow-sm flex items-center justify-between sticky top-0 z-10">
-        <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-          LexiMind AI
+    <div className="w-[340px] h-[420px] bg-paper-creme font-sans text-ink flex flex-col overflow-hidden relative">
+      {/* Paper grain texture */}
+      <div className="fixed inset-0 paper-grain z-50 pointer-events-none"></div>
+
+      {/* Decorative blur */}
+      <div className="fixed bottom-[-10%] left-[-10%] size-[150px] bg-primary/5 rounded-full blur-[50px] -z-10"></div>
+
+      <header className="flex items-center justify-between px-5 pt-5 pb-3">
+        <h1 className="text-lg font-light tracking-[0.2em] uppercase text-ink">
+          Underline
         </h1>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-3">
           <button
             onClick={() => setView('vocabulary')}
-            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors relative"
+            className="cursor-pointer hover:opacity-70 transition-opacity"
             title="My Vocabulary"
           >
-            <BookOpen size={20} />
-            {vocabCount > 0 && (
-              <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-medium">
-                {vocabCount > 99 ? '99+' : vocabCount}
-              </span>
-            )}
+            <span className="material-symbols-outlined text-ink/70 text-[22px]">auto_stories</span>
           </button>
           <button
             onClick={() => setView('settings')}
-            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+            className="flex items-center justify-center hover:opacity-70 transition-opacity"
           >
-            <SettingsIcon size={20} />
+            <span className="material-symbols-outlined text-ink/70 text-[22px]">settings</span>
           </button>
         </div>
       </header>
 
-      <main className="p-4 space-y-6 flex-1 overflow-y-auto">
+      <main className="flex-1 px-5 flex flex-col gap-4">
         <section>
           <Toggle
-            label="Clue Mode"
             active={clueMode}
             onToggle={() => {
               const newState = !clueMode;
@@ -121,48 +167,63 @@ function App() {
               }
             }}
           />
-          <p className="text-xs text-gray-500 mt-2 px-1">
-            Automatically highlights "Review" words on web pages.
-          </p>
         </section>
 
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Daily Review</h2>
-            <span className="text-xs bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full font-medium">
-              {currentIndex + 1} / {MOCK_WORDS.length}
-            </span>
+        <section className="flex flex-col gap-2 flex-1">
+          <div className="flex justify-between items-center px-1">
+            <h3 className="text-[10px] uppercase kerning-wide font-semibold text-ink/40">Daily Review</h3>
+            {reviewWords.length > 0 && (
+              <span className="text-[10px] font-medium text-primary bg-primary/5 px-2 py-0.5 rounded-full">
+                {currentIndex + 1} / {reviewWords.length}
+              </span>
+            )}
           </div>
 
-          <div key={currentIndex}>
-            {/* Key ensures simple remount animation/reset on change */}
-            <ReviewCard data={MOCK_WORDS[currentIndex]} />
-          </div>
-
-          {/* Navigation Controls */}
-          <div className="flex items-center justify-between mt-4 px-2">
-            <button
-              onClick={handlePrev}
-              className="p-2 text-gray-400 hover:text-blue-600 hover:bg-white rounded-full transition-all active:scale-95"
-            >
-              <ChevronLeft size={24} />
-            </button>
-
-            <button className="flex flex-col items-center gap-1 text-gray-300 hover:text-green-500 transition-colors">
-              <RefreshCw size={16} />
-              <span className="text-[10px] font-medium">Mastered</span>
-            </button>
-
-            <button
-              onClick={handleNext}
-              className="p-2 text-blue-600 hover:bg-white bg-blue-50/50 rounded-full transition-all shadow-sm active:scale-95 hover:shadow-md"
-            >
-              <ChevronRight size={24} />
-            </button>
-          </div>
-
+          {reviewWords.length > 0 ? (
+            <div key={currentIndex} className="flex-1 overflow-hidden">
+              <ReviewCard data={reviewWords[currentIndex]} />
+            </div>
+          ) : (
+            <div className="bg-paper-white rounded-2xl p-6 flex flex-col items-center justify-center flex-1 text-center zen-shadow border border-black/5">
+              <span className="material-symbols-outlined text-ink/20 text-4xl mb-2">auto_stories</span>
+              <p className="text-ink/50 text-sm">
+                单词本为空，快去收藏一些单词吧！
+              </p>
+              <p className="text-ink/30 text-xs mt-1">
+                在网页中选中单词，点击翻译后添加到单词本
+              </p>
+            </div>
+          )}
         </section>
       </main>
+
+      {/* Navigation Controls */}
+      {reviewWords.length > 0 && (
+        <div className="flex items-center justify-between px-6 pb-2 -mt-3">
+          <button
+            onClick={handlePrev}
+            className="p-2 text-ink/40 hover:text-ink transition-colors"
+          >
+            <span className="material-symbols-outlined text-2xl">chevron_left</span>
+          </button>
+
+          <button
+            onClick={handleShuffle}
+            className="flex flex-col items-center gap-0.5 cursor-pointer group"
+            title="Shuffle"
+          >
+            <span className="material-symbols-outlined text-ink/40 group-hover:text-ink transition-colors text-xl">shuffle</span>
+            <span className="text-[9px] uppercase kerning-wide text-ink/40 group-hover:text-ink transition-colors">Shuffle</span>
+          </button>
+
+          <button
+            onClick={handleNext}
+            className="p-2 text-ink/40 hover:text-ink transition-colors"
+          >
+            <span className="material-symbols-outlined text-2xl">chevron_right</span>
+          </button>
+        </div>
+      )}
     </div>
   )
 }

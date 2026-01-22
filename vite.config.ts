@@ -15,7 +15,7 @@ export default defineConfig({
     // Content Script 构建配置 - 使用 IIFE 格式
     lib: {
       entry: resolve(__dirname, 'src/content/index.tsx'),
-      name: 'LexiMindContent',
+      name: 'UnderlineContent',
       formats: ['iife'],
       fileName: () => 'assets/content.js',
     },
